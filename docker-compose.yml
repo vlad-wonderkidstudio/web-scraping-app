@@ -1,0 +1,95 @@
+networks:
+  docker.network:
+    driver: bridge
+
+services:
+  mongo:
+    image: mongo
+    container_name: mongo
+    networks:
+      - docker.network
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker/mongo/init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=scrapingDB
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    networks:
+      - docker.network
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongo
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin123
+      - ME_CONFIG_MONGODB_SERVER=mongo
+
+  scraping-service:
+    build:
+      context: ./docker/scraping-service
+    container_name: scraping-service
+    volumes:
+      - ./scraping-service:/usr/src/scraping-service
+    networks:
+      - docker.network
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    depends_on:
+      - mongo
+    environment: # for demo purposes I will set it here
+      - DB_HOST=mongo
+      - DB_PORT=27017
+      - DB_USERNAME=admin
+      - DB_PASSWORD=admin123
+      - DB_DATABASE=scrapingDB
+      - DB_AUTH_SOURCE=admin
+      - SERVICE_PORT=3000
+
+  backend-service:
+    build:
+      context: ./docker/backend-service
+    container_name: backend-service
+    volumes:
+      - ./backend-service:/usr/src/backend-service
+    networks:
+      - docker.network
+    ports:
+      - "4000:4000"
+    stdin_open: true
+    depends_on:
+      - mongo
+      - scraping-service
+    environment: # for demo purposes I will set it here
+      - DB_HOST=mongo
+      - DB_PORT=27017
+      - DB_USERNAME=admin
+      - DB_PASSWORD=admin123
+      - DB_DATABASE=scrapingDB
+      - DB_AUTH_SOURCE=admin
+      - SERVICE_PORT=4000
+      - SCRAPING_SERVICE_API_URL=http://scraping-service:3000/scraping
+
+
+  frontend:
+    build:
+      context: ./docker/frontend
+    container_name: frontend
+    volumes:
+      - ./front-end:/usr/src/front-end
+    networks:
+      - docker.network
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend-service
+    environment:
+      - REACT_APP_BACKEND_API_URL=http://localhost:4000/api
+      - PORT=5000
