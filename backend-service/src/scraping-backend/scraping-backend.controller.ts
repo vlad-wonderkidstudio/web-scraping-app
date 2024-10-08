@@ -40,6 +40,7 @@ export class ScrapingBackendController {
       );
       // Note: in production I would not show all the error info, just log it, and show simple error
       // also for simplicity I always send HttpStatus.INTERNAL_SERVER_ERROR code here.
+
       throw new HttpException(
         {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

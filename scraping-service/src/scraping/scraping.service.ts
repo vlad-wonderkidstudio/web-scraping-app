@@ -2,9 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
-//import * as cheerio from 'cheerio';
 import { ScrapingResult } from './entities/scraping-result.entity';
-//import { ApiEndpointResponse } from 'src/common/interfaces/api-endpoint-response.interface';
+import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class ScrapingService {
@@ -16,7 +15,7 @@ export class ScrapingService {
     private readonly scrapingResultRepository: Repository<ScrapingResult>,
   ) {}
 
-  async scrapeWebsite(url: string): Promise<ScrapingResult> {
+  async scrapeWebsite(url: string, id?: string): Promise<ScrapingResult> {
     try {
       const { data: htmlContent } = await axios.get(url);
       this.logger.log(`Successfully fetched HTML content for URL: ${url}`);
@@ -43,16 +42,27 @@ export class ScrapingService {
         `Extracted ${urls.length} URLs and ${domains.length} domains from URL: ${url}`,
       );
 
-      const scrapingResult = this.scrapingResultRepository.create({
+      const dataToSave: ScrapingResult = {
         url,
         domains,
         domainsCount: domains.length,
         foundUrls: urls,
         foundUrlsCount: urls.length,
         createdAt: new Date(),
-      });
+      };
 
-      return await this.scrapingResultRepository.save(scrapingResult);
+      if (id) {
+        await this.scrapingResultRepository.update(
+          { _id: new ObjectId(id) },
+          dataToSave,
+        );
+        return await this.scrapingResultRepository.findOneBy({
+          _id: new ObjectId(id),
+        });
+      } else {
+        const scrapingResult = this.scrapingResultRepository.create(dataToSave);
+        return await this.scrapingResultRepository.save(scrapingResult);
+      }
     } catch (error) {
       throw new Error(
         `Failed to extract and save links for URL: "${url}". ${error.toString()}`,

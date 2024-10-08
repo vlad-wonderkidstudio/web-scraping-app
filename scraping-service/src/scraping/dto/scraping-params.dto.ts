@@ -13,4 +13,7 @@ export class ScrapingParamsDto {
     require_protocol: true,
   })
   url: string;
+
+  @IsString()
+  id?: string;
 }

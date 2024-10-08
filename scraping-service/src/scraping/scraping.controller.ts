@@ -51,6 +51,7 @@ export class ScrapingController {
     try {
       const res = await this.scrapingService.scrapeWebsite(
         scrapingParamsDto.url,
+        scrapingParamsDto.id,
       );
 
       return {
